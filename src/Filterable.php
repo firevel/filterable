@@ -132,7 +132,7 @@ trait Filterable
 
         if (!empty($relationship)) {
             return $query->whereHas(
-                $relationship,
+                Str::camel($relationship),
                 function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);                        
