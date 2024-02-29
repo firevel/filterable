@@ -51,7 +51,9 @@ trait Filterable
         $filterable = array_intersect_key($this->filterable, $filters);
 
         foreach ($filterable as $filterName => $filterType) {
-            if (is_array($filters[$filterName])) {
+            if ($filterType === 'scope') {
+                return $query->{Str::camel($filterName)}($filters[$filterName]);
+            } elseif (is_array($filters[$filterName])) {
                 foreach ($filters[$filterName] as $operator => $filterValue) {
                     $operator = urldecode($operator);
                     if (! array_key_exists($operator, $this->allowedFilterOperators)) {
