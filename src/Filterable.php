@@ -52,7 +52,7 @@ trait Filterable
 
         foreach ($filterable as $filterName => $filterType) {
             if ($filterType === 'scope') {
-                return $query->{Str::camel($filterName)}($filters[$filterName]);
+                $query->{Str::camel($filterName)}($filters[$filterName]);
             } elseif (is_array($filters[$filterName])) {
                 foreach ($filters[$filterName] as $operator => $filterValue) {
                     $operator = urldecode($operator);
