@@ -53,7 +53,9 @@ trait Filterable
         foreach ($filterable as $filterName => $filterType) {
             if ($filterType === 'scope') {
                 $query->{Str::camel($filterName)}($filters[$filterName]);
-            } elseif (is_array($filters[$filterName])) {
+                continue;
+            }
+            if (is_array($filters[$filterName])) {
                 foreach ($filters[$filterName] as $operator => $filterValue) {
                     $operator = urldecode($operator);
                     if (! array_key_exists($operator, $this->allowedFilterOperators)) {
