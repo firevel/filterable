@@ -19,6 +19,7 @@ trait Filterable
      * @var array
      */
     protected $allowedFilterOperators = [
+        '<>' => ['integer', 'id', 'string'],
         '>=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '<=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '>' => ['integer', 'date', 'datetime', 'id', 'relationship'],
