@@ -108,14 +108,17 @@ trait Filterable
             return $query->whereIn($filterName, $array);
         }
 
+        if (strpos($filterName, '->') !== false) {
+            $jsonPath = null;
+            [$filterName, $jsonPath] = explode('->', $filterName, 2);
+        }
+
         switch ($filterType) {
             case 'id':
             case 'integer':
             case 'string':
-                $method = 'where';
-                break;
             case 'json':
-                $method = 'whereJsonContains';
+                $method = 'where';
                 break;
             case 'relationship':
                 $filterName = Str::camel($filterName);
@@ -152,6 +155,10 @@ trait Filterable
 
         if ($filterType == 'relationship'  && ! empty($filterRelationshipQuery)) {
             return $query->$method($filterName, $operator, $filterValue, 'AND', $this->filterRelationshipQuery);
+        }
+
+        if (! empty($jsonPath)) {
+            return $query->$method("$filterName->$jsonPath", $operator, $filterValue);
         }
 
         return $query->$method($filterName, $operator, $filterValue);
