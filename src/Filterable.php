@@ -49,28 +49,39 @@ trait Filterable
             return $query;
         }
 
-        $filterable = array_intersect_key($this->filterable, $filters);
+        foreach ($filters as $filterName => $filterValue) {
+            $baseColumn = explode('->', $filterName)[0];
+            if (!array_key_exists($baseColumn, $this->filterable)) {
+                throw new \Exception("Filter column '$baseColumn' is not allowed.");
+            }
+        }
 
-        foreach ($filterable as $filterName => $filterType) {
+        foreach ($filters as $filterName => $filterValue) {
+            $baseColumn = explode('->', $filterName)[0];
+            $filterType = $this->filterable[$baseColumn];
+
             if ($filterType === 'scope') {
                 $query->{Str::camel($filterName)}($filters[$filterName]);
                 continue;
             }
-            if (is_array($filters[$filterName])) {
-                foreach ($filters[$filterName] as $operator => $filterValue) {
+
+            if (is_array($filterValue)) {
+                foreach ($filterValue as $operator => $value) {
                     $operator = urldecode($operator);
-                    if (! array_key_exists($operator, $this->allowedFilterOperators)) {
-                        throw new \Exception('Illegal operator '.$operator);
+                    if (!array_key_exists($operator, $this->allowedFilterOperators)) {
+                        throw new \Exception('Illegal operator ' . $operator);
                     }
-                    if (! in_array($filterType, $this->allowedFilterOperators[$operator])) {
-                        throw new \Exception('Operator '.$operator.' is not allowed for ' . $filterType);
+                    if (!in_array($filterType, $this->allowedFilterOperators[$operator])) {
+                        throw new \Exception('Operator ' . $operator . ' is not allowed for ' . $filterType);
                     }
-                    $this->applyFilterToQuery($filterType, $filterName, $filterValue, $operator, $query);
+                    $this->applyFilterToQuery($filterType, $filterName, $value, $operator, $query);
                 }
             } else {
-                $this->applyFilterToQuery($filterType, $filterName, $filters[$filterName], null, $query);
+                $this->applyFilterToQuery($filterType, $filterName, $filterValue, null, $query);
             }
         }
+
+        return $query;
     }
 
     /**
