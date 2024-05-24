@@ -24,7 +24,7 @@ trait Filterable
         '<=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '>' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '<' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '=' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json'],
+        '=' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
         'in' => ['integer', 'id', 'string'],
     ];
@@ -131,6 +131,9 @@ trait Filterable
             case 'json':
                 $method = 'where';
                 break;
+            case 'array':
+                $method = 'whereJsonContains';
+                break;
             case 'relationship':
                 $filterName = Str::camel($filterName);
                 $method = 'has';
@@ -166,6 +169,10 @@ trait Filterable
 
         if ($filterType == 'relationship'  && ! empty($filterRelationshipQuery)) {
             return $query->$method($filterName, $operator, $filterValue, 'AND', $this->filterRelationshipQuery);
+        }
+
+        if ($filterType == 'array') {
+            return $query->$method($filterName, $filterValue);
         }
 
         if (! empty($jsonPath)) {
