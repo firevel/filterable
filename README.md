@@ -39,6 +39,7 @@ class User extends Model
 - `relationship`
 - `boolean`
 - `json`
+- `array`
 
 ## Usage
 
