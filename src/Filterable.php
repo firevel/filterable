@@ -158,11 +158,15 @@ trait Filterable
         if (!empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery) {
+                function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);                        
                     }
-                    $query->$method($filterName, $operator, $filterValue);
+                    if ($filterType == 'array') {
+                        return $query->$method($filterName, $filterValue);
+                    }
+
+                    return $query->$method($filterName, $operator, $filterValue);
                 }
             );
         }
