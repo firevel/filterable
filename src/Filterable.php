@@ -26,7 +26,7 @@ trait Filterable
         '<' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '=' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
-        'in' => ['integer', 'id', 'string'],
+        'in' => ['integer', 'id', 'string', 'json'],
     ];
 
     /**
