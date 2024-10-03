@@ -14,6 +14,13 @@ trait Filterable
     protected $defaultFilterOperator = '=';
 
     /**
+     * Check if columns are supported and throw exception if not.
+     *
+     * @var boolean
+     */
+    protected $validateColumns = false;
+
+    /**
      * Supported operators.
      *
      * @var array
@@ -49,15 +56,20 @@ trait Filterable
             return $query;
         }
 
-        foreach ($filters as $filterName => $filterValue) {
-            $baseColumn = explode('->', $filterName)[0];
-            if (!array_key_exists($baseColumn, $this->filterable)) {
-                throw new \Exception("Filter column '$baseColumn' is not allowed.");
+        if ($this->validateColumns) {
+            foreach ($filters as $filterName => $filterValue) {
+                $baseColumn = explode('->', $filterName)[0];
+                if (!array_key_exists($baseColumn, $this->filterable)) {
+                    throw new \Exception("Filter column '$baseColumn' is not allowed.");
+                }
             }
         }
 
         foreach ($filters as $filterName => $filterValue) {
             $baseColumn = explode('->', $filterName)[0];
+            if (!array_key_exists($baseColumn, $this->filterable)) {
+                continue;
+            }
             $filterType = $this->filterable[$baseColumn];
 
             if ($filterType === 'scope') {
