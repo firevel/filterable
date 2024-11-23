@@ -170,14 +170,16 @@ trait Filterable
         if (!empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
+                function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType, $jsonPath) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);                        
                     }
                     if ($filterType == 'array') {
                         return $query->$method($filterName, $filterValue);
                     }
-
+                    if (! empty($jsonPath)) {
+                        return $query->$method("$filterName->$jsonPath", $operator, $filterValue);
+                    }
                     return $query->$method($filterName, $operator, $filterValue);
                 }
             );
