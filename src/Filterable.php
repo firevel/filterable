@@ -34,6 +34,8 @@ trait Filterable
         '=' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
         'in' => ['integer', 'id', 'string', 'json'],
+        'is' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'not' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
     ];
 
     /**
@@ -129,6 +131,15 @@ trait Filterable
                 $array = explode(',', $filterValue);
             }
             return $query->whereIn($filterName, $array);
+        }
+        
+        // NULL handling with IS and NOT operators
+        if (($operator == 'is' || $operator == 'not') && strtolower($filterValue) === 'null') {
+            if ($operator == 'is') {
+                return $query->whereNull($filterName);
+            } else {
+                return $query->whereNotNull($filterName);
+            }
         }
 
         if (strpos($filterName, '->') !== false) {

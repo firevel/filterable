@@ -41,6 +41,19 @@ class User extends Model
 - `json`
 - `array`
 
+## Supported Operators
+
+- `=` - Equal to (default)
+- `<>` - Not equal to
+- `>` - Greater than
+- `>=` - Greater than or equal to
+- `<` - Less than
+- `<=` - Less than or equal to
+- `like` - SQL LIKE operator (for strings)
+- `in` - SQL IN operator (for arrays of values)
+- `is` - IS NULL check (use with value 'null')
+- `not` - IS NOT NULL check (use with value 'null')
+
 ## Usage
 
 Use the `filter()` scope on your Eloquent query to apply filters.
@@ -51,6 +64,9 @@ $users = User::filter(['user_id' => ['=' => 5]])->get();
 
 // Fetch users created after a certain date
 $users = User::filter(['created_at' => ['>' => '2023-01-01']])->get();
+
+// Fetch users where email is NULL
+$users = User::filter(['email' => ['is' => 'null']])->get();
 
 // ... other filter combinations ...
 ```
