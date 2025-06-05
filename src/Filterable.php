@@ -29,13 +29,13 @@ trait Filterable
         '<>' => ['integer', 'id', 'string'],
         '>=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '<=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '>' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '<' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '=' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        '>'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        '<'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        '='  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
-        'in' => ['integer', 'id', 'string', 'json'],
-        'is' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
-        'not' => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'in'   => ['integer', 'id', 'string', 'json'],
+        'is'   => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'not'  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
     ];
 
     /**
@@ -48,7 +48,7 @@ trait Filterable
     /**
      * Apply filters to query.
      *
-     * @param  array  $filters  Filters formatted key => val or key => [operator => vale]
+     * @param  array  $filters   Filters formatted key => val or key => [operator => value]
      * @param  Builder  $query
      * @return Builder
      */
@@ -61,7 +61,7 @@ trait Filterable
         if ($this->validateColumns) {
             foreach ($filters as $filterName => $filterValue) {
                 $baseColumn = explode('->', $filterName)[0];
-                if (!array_key_exists($baseColumn, $this->filterable)) {
+                if (! array_key_exists($baseColumn, $this->filterable)) {
                     throw new \Exception("Filter column '$baseColumn' is not allowed.");
                 }
             }
@@ -69,28 +69,37 @@ trait Filterable
 
         foreach ($filters as $filterName => $filterValue) {
             $baseColumn = explode('->', $filterName)[0];
-            if (!array_key_exists($baseColumn, $this->filterable)) {
+
+            // Skip any filters not explicitly declared in $filterable
+            if (! array_key_exists($baseColumn, $this->filterable)) {
                 continue;
             }
+
             $filterType = $this->filterable[$baseColumn];
 
+            // If the filterType is "scope", call the local scope method
             if ($filterType === 'scope') {
+                // Str::camel('name') => 'name', so it will call $query->name($value)
                 $query->{Str::camel($filterName)}($filters[$filterName]);
                 continue;
             }
 
+            // If the incoming value is an array like ['>' => '2023-01-01'], loop through operators
             if (is_array($filterValue)) {
                 foreach ($filterValue as $operator => $value) {
                     $operator = urldecode($operator);
-                    if (!array_key_exists($operator, $this->allowedFilterOperators)) {
+
+                    if (! array_key_exists($operator, $this->allowedFilterOperators)) {
                         throw new \Exception('Illegal operator ' . $operator);
                     }
-                    if (!in_array($filterType, $this->allowedFilterOperators[$operator])) {
-                        throw new \Exception('Operator ' . $operator . ' is not allowed for ' . $filterType);
+                    if (! in_array($filterType, $this->allowedFilterOperators[$operator])) {
+                        throw new \Exception("Operator '$operator' is not allowed for type '$filterType'");
                     }
+
                     $this->applyFilterToQuery($filterType, $filterName, $value, $operator, $query);
                 }
             } else {
+                // Default operator (“=”) if none specified
                 $this->applyFilterToQuery($filterType, $filterName, $filterValue, null, $query);
             }
         }
@@ -99,32 +108,35 @@ trait Filterable
     }
 
     /**
-     * Apply filter to query.
+     * Apply a single filter to the query builder.
      *
-     * @param  string  $filterType  Type
-     * @param  string  $filterName  Name
-     * @param  string  $filterValue  Value
-     * @param  string|null  $operator  Operator ex.: >=
-     * @param  Builder  $query
+     * @param  string        $filterType
+     * @param  string        $filterName
+     * @param  mixed         $filterValue
+     * @param  string|null   $operator
+     * @param  Builder       $query
      *
      * @return Builder
      */
     public function applyFilterToQuery($filterType, $filterName, $filterValue, $operator, $query)
     {
         $filterRelationshipQuery = $this->filterRelationshipQuery;
+
+        // If no operator was provided, use default "="
         if (empty($operator)) {
             $operator = $this->defaultFilterOperator;
         }
 
-        if (strpos($filterName, '.')) {
-            if (substr_count($filterName, '.')>1) {
-                throw new \Exception('Maximum one level sub-query filtering supported.');
+        // Support “relationship.column” notation (only one level deep)
+        if (strpos($filterName, '.') !== false) {
+            if (substr_count($filterName, '.') > 1) {
+                throw new \Exception('Maximum one‐level sub‐query filtering supported.');
             }
-            [$relationship, $filterName] = explode('.', $filterName);
+            list($relationship, $filterName) = explode('.', $filterName);
         }
 
-        // WHERE IN operator handling
-        if ($operator == 'in') {
+        // Handle “in” operator
+        if ($operator === 'in') {
             if (is_array($filterValue)) {
                 $array = $filterValue;
             } else {
@@ -132,21 +144,25 @@ trait Filterable
             }
             return $query->whereIn($filterName, $array);
         }
-        
-        // NULL handling with IS and NOT operators
-        if (($operator == 'is' || $operator == 'not') && strtolower($filterValue) === 'null') {
-            if ($operator == 'is') {
+
+        // Handle NULL checks for “is null” / “is not null”
+        if (
+            ($operator === 'is' || $operator === 'not')
+            && strtolower($filterValue) === 'null'
+        ) {
+            if ($operator === 'is') {
                 return $query->whereNull($filterName);
             } else {
                 return $query->whereNotNull($filterName);
             }
         }
 
+        // Handle JSON‐path filtering (e.g. "meta->key")
         if (strpos($filterName, '->') !== false) {
-            $jsonPath = null;
-            [$filterName, $jsonPath] = explode('->', $filterName, 2);
+            list($filterName, $jsonPath) = explode('->', $filterName, 2);
         }
 
+        // Decide which “where…” method to call based on filterType
         switch ($filterType) {
             case 'id':
             case 'integer':
@@ -154,38 +170,48 @@ trait Filterable
             case 'json':
                 $method = 'where';
                 break;
+
             case 'array':
                 $method = 'whereJsonContains';
                 break;
+
             case 'relationship':
                 $filterName = Str::camel($filterName);
                 $method = 'has';
                 break;
+
             case 'boolean':
                 $filterValue = filter_var($filterValue, FILTER_VALIDATE_BOOLEAN);
                 $method = 'where';
                 break;
+
             case 'date':
                 $method = 'whereDate';
                 break;
+
             case 'datetime':
-                if (strlen($filterValue) == 10) {
+                // If YYYY-MM-DD (length 10), use whereDate; otherwise use full “where”
+                if (strlen($filterValue) === 10) {
                     $method = 'whereDate';
+                } else {
+                    $method = 'where';
                 }
-                $method = 'where';
                 break;
+
             default:
-                throw new \Exception('Unsupported filter type '.$filterType);
+                throw new \Exception('Unsupported filter type ' . $filterType);
         }
 
-        if (!empty($relationship)) {
+        // If this was a “relationship.column” filter
+        if (! empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function($query) use($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
+                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
                     if (! empty($filterRelationshipQuery)) {
-                        $query->where($filterRelationshipQuery);                        
+                        $query->where($filterRelationshipQuery);
                     }
-                    if ($filterType == 'array') {
+
+                    if ($filterType === 'array') {
                         return $query->$method($filterName, $filterValue);
                     }
 
@@ -194,40 +220,48 @@ trait Filterable
             );
         }
 
-        if ($filterType == 'relationship'  && ! empty($filterRelationshipQuery)) {
-            return $query->$method($filterName, $operator, $filterValue, 'AND', $this->filterRelationshipQuery);
+        // If type is “relationship” and we had a $filterRelationshipQuery, use that
+        if ($filterType === 'relationship' && ! empty($filterRelationshipQuery)) {
+            return $query->$method(
+                $filterName,
+                $operator,
+                $filterValue,
+                'AND',
+                $this->filterRelationshipQuery
+            );
         }
 
-        if ($filterType == 'array') {
+        // If type is “array” → use whereJsonContains
+        if ($filterType === 'array') {
             return $query->$method($filterName, $filterValue);
         }
 
+        // If we had a JSON path (meta->key), tack it on now
         if (! empty($jsonPath)) {
             return $query->$method("$filterName->$jsonPath", $operator, $filterValue);
         }
 
+        // Default case: normal WHERE clause
         return $query->$method($filterName, $operator, $filterValue);
     }
 
     /**
-     * Use extra query on relationship queries.
-     * 
-     * @param  Builder $query
-     * @return Builder
+     * Allow chaining an extra query on relationships.
+     *
+     * @param  Builder  $query
+     * @return $this
      */
     public function useRelationshipQuery($query)
     {
         $this->filterRelationshipQuery = $query;
-
         return $this;
     }
 
     /**
-     * Scope a query to apply filters.
+     * Scope a query to apply the given filters.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param array $filters
-     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  array  $filters
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeFilter($query, $filters)
