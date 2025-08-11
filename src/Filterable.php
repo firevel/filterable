@@ -7,6 +7,18 @@ use Illuminate\Support\Str;
 trait Filterable
 {
     /**
+     * Determine the validation key for a given filter name.
+     * - For JSON paths (col->path), the validation key is the left side including any relationship dot prefix (e.g., user.document).
+     * - Otherwise, use the raw filter name.
+     */
+    protected function getValidationKey(string $filterName): string
+    {
+        if (strpos($filterName, '->') !== false) {
+            return explode('->', $filterName, 2)[0];
+        }
+        return $filterName;
+    }
+    /**
      * Default operator if no other operator detected.
      *
      * @var string
@@ -80,22 +92,26 @@ trait Filterable
 
         if ($this->validateColumns) {
             foreach ($filters as $filterName => $filterValue) {
-                $baseColumn = explode('->', $filterName)[0];
-                if (! array_key_exists($baseColumn, $this->filterable)) {
-                    throw new \Exception("Filter column '$baseColumn' is not allowed.");
+                $validationKey = $this->getValidationKey($filterName);
+                if (! array_key_exists($validationKey, $this->filterable)) {
+                    throw new \Exception("Filter column '$validationKey' is not allowed.");
                 }
             }
         }
 
         foreach ($filters as $filterName => $filterValue) {
-            $baseColumn = explode('->', $filterName)[0];
+            // Eagerly reject nested relationship paths beyond one level
+            if (strpos($filterName, '.') !== false && substr_count($filterName, '.') > 1) {
+                throw new \Exception('Maximum one‐level sub‐query filtering supported.');
+            }
+            $validationKey = $this->getValidationKey($filterName);
 
             // Skip any filters not explicitly declared in $filterable
-            if (! array_key_exists($baseColumn, $this->filterable)) {
+            if (! array_key_exists($validationKey, $this->filterable)) {
                 continue;
             }
 
-            $filterType = $this->filterable[$baseColumn];
+            $filterType = $this->filterable[$validationKey];
 
             // If the filterType is "scope", call the local scope method
             if ($filterType === 'scope') {
@@ -153,11 +169,13 @@ trait Filterable
         }
 
         // Support “relationship.column” notation (only one level deep)
+        $isRelationshipDot = false;
         if (strpos($filterName, '.') !== false) {
             if (substr_count($filterName, '.') > 1) {
                 throw new \Exception('Maximum one‐level sub‐query filtering supported.');
             }
             list($relationship, $filterName) = explode('.', $filterName);
+            $isRelationshipDot = true;
         }
 
         // Handle “in” operator
@@ -201,8 +219,14 @@ trait Filterable
                 break;
 
             case 'relationship':
-                $filterName = Str::camel($filterName);
-                $method = 'has';
+                if ($isRelationshipDot) {
+                    // When targeting a column on the related model, we apply a where inside whereHas
+                    $method = 'where';
+                } else {
+                    // When filtering by relationship existence/count
+                    $filterName = Str::camel($filterName);
+                    $method = 'has';
+                }
                 break;
 
             case 'boolean':
@@ -231,16 +255,12 @@ trait Filterable
         if (! empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
+                function ($query) use ($filterName, $operator, $filterValue, $filterRelationshipQuery) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);
                     }
 
-                    if ($filterType === 'array') {
-                        return $query->$method($filterName, $filterValue);
-                    }
-
-                    return $query->$method($filterName, $operator, $filterValue);
+                    return $query->where($filterName, $operator, $filterValue);
                 }
             );
         }
