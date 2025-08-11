@@ -128,21 +128,43 @@ The trait will only apply filters for keys explicitly declared in `$filterable`;
 
 By default, the trait allows the following operators for each filter type. To override operators on a field, simply pass an associative array (`'[ operator ] => [ value ]'`).
 
-| Operator | Meaning                                    | Allowed Types                                     |
-| -------- | ------------------------------------------ | ------------------------------------------------- |
-| `=`      | Equal to (default if no operator provided) | `integer`, `id`, `string`, `date`, `datetime`,
-`relationship`, `boolean`, `json`, `array` |
-| `<>`     | Not equal to                               | `integer`, `id`, `string`                         |
-| `>`      | Greater than                               | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `>=`     | Greater than or equal                      | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `<`      | Less than                                  | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `<=`     | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `like`   | SQL LIKE (for partial string matches)       | `string`                                          |
-| `in`     | SQL IN (for lists or comma‐separated values)| `integer`, `id`, `string`, `json`                 |
-| `is`     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
-| `not`    | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
+| Operator | Alias | Meaning                                    | Allowed Types                                     |
+| -------- | ----- | ------------------------------------------ | ------------------------------------------------- |
+| `=`      | `eq`  | Equal to (default if no operator provided) | `integer`, `id`, `string`, `date`, `datetime`, `relationship`, `boolean`, `json`, `array` |
+| `<>`     | `ne`  | Not equal to                               | `integer`, `id`, `string`                         |
+| `>`      | `gt`  | Greater than                               | `integer`, `date`, `datetime`, `id`, `relationship`|
+| `>=`     | `gte` | Greater than or equal                      | `integer`, `date`, `datetime`, `id`, `relationship`|
+| `<`      | `lt`  | Less than                                  | `integer`, `date`, `datetime`, `id`, `relationship`|
+| `<=`     | `lte` | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `relationship`|
+| `like`   | -     | SQL LIKE (for partial string matches)       | `string`                                          |
+| `in`     | -     | SQL IN (for lists or comma‐separated values)| `integer`, `id`, `string`, `json`                 |
+| `is`     | -     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
+| `not`    | -     | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
 
 > **Note**: If you supply a plain scalar (e.g. `'foo'`) instead of `['=' => 'foo']`, the trait assumes the `=` operator by default.
+
+#### Operator Aliases
+
+To avoid using special characters in URLs, you can use text-based aliases for comparison operators:
+
+- `gt` for `>` (greater than)
+- `gte` for `>=` (greater than or equal)
+- `lt` for `<` (less than)
+- `lte` for `<=` (less than or equal)
+- `ne` for `<>` (not equal)
+- `eq` for `=` (equal)
+
+These aliases work exactly the same as their symbolic counterparts:
+
+```php
+// Using symbolic operators
+$users = User::filter([ 'age' => ['>' => 25] ])->get();
+
+// Using alias operators (URL-friendly)
+$users = User::filter([ 'age' => ['gt' => 25] ])->get();
+
+// Both produce: SELECT * FROM users WHERE age > 25
+```
 
 ---
 
