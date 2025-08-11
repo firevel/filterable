@@ -15,5 +15,15 @@
             "Firevel\\Filterable\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Firevel\\Filterable\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "orchestra/testbench": "^8.16",
+        "mockery/mockery": "^1.6"
+    },
     "minimum-stability": "dev"
 }
