@@ -27,15 +27,35 @@ trait Filterable
      */
     protected $allowedFilterOperators = [
         '<>' => ['integer', 'id', 'string'],
+        'ne' => ['integer', 'id', 'string'],
         '>=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        'gte' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '<=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        'lte' => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '>'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        'gt'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '<'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
+        'lt'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
         '='  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'eq'  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
         'in'   => ['integer', 'id', 'string', 'json'],
         'is'   => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
         'not'  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+    ];
+
+    /**
+     * Operator aliases mapping.
+     *
+     * @var array
+     */
+    protected $operatorAliases = [
+        'gt' => '>',
+        'gte' => '>=',
+        'lt' => '<',
+        'lte' => '<=',
+        'ne' => '<>',
+        'eq' => '=',
     ];
 
     /**
@@ -125,6 +145,11 @@ trait Filterable
         // If no operator was provided, use default "="
         if (empty($operator)) {
             $operator = $this->defaultFilterOperator;
+        }
+
+        // Convert operator alias to actual operator if it's an alias
+        if (isset($this->operatorAliases[$operator])) {
+            $operator = $this->operatorAliases[$operator];
         }
 
         // Support “relationship.column” notation (only one level deep)
