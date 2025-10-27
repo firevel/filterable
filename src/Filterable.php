@@ -99,8 +99,8 @@ trait Filterable
 
             // If the filterType is "scope", call the local scope method
             if ($filterType === 'scope') {
-                // Str::camel('name') => 'name', so it will call $query->name($value)
-                $query->{Str::camel($filterName)}($filters[$filterName]);
+                // Str::camel('name') => 'name', so it will call $query->name($value, $filters)
+                $query->{Str::camel($filterName)}($filters[$filterName], $filters);
                 continue;
             }
 

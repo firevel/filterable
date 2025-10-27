@@ -261,7 +261,8 @@ Sometimes you want a single filter key (e.g. `name`) that actually applies to mu
        ];
 
        // Add a local scopeName() to combine first_name OR last_name
-       public function scopeName($query, $value)
+       // The second parameter ($allFilters) provides access to all filters
+       public function scopeName($query, $value, $allFilters = [])
        {
            $query->where(function ($q) use ($value) {
                $q->where('first_name', 'like', "%{$value}%")
@@ -285,11 +286,40 @@ Sometimes you want a single filter key (e.g. `name`) that actually applies to mu
      AND created_at > '2025-01-01'
    ```
 
-#### Why use a “scope”-type filter?
+#### Why use a "scope"-type filter?
 
 - **Zero changes to the trait**: the existing code already checks `if ($filterType === 'scope')` and executes the corresponding local scope.
-- **Keeps your trait logic simple**: you don’t have to override the trait’s internal validation or operator parsing—your `scopeName()` takes full responsibility for how the filter behaves.
-- **Reusable & readable**: everyone knows that “scopeX” is a local query modifier, and the trait simply defers to it.
+- **Keeps your trait logic simple**: you don't have to override the trait's internal validation or operator parsing—your `scopeName()` takes full responsibility for how the filter behaves.
+- **Reusable & readable**: everyone knows that "scopeX" is a local query modifier, and the trait simply defers to it.
+
+#### Accessing Other Filters in Scope Methods
+
+Scope filter methods receive two parameters:
+1. **`$value`** - The specific value for this filter
+2. **`$allFilters`** - The complete array of all filters being applied
+
+This allows you to create conditional logic based on other filters:
+
+```php
+protected $filterable = [
+    'search'     => 'scope',
+    'category'   => 'string',
+    'status'     => 'string',
+];
+
+public function scopeSearch($query, $value, $allFilters = [])
+{
+    $query->where(function ($q) use ($value, $allFilters) {
+        $q->where('title', 'like', "%{$value}%")
+          ->orWhere('description', 'like', "%{$value}%");
+
+        // Apply different search logic if category filter is present
+        if (isset($allFilters['category'])) {
+            $q->orWhere('tags', 'like', "%{$value}%");
+        }
+    });
+}
+```
 
 ---
 
