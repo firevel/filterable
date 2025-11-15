@@ -26,22 +26,22 @@ trait Filterable
      * @var array
      */
     protected $allowedFilterOperators = [
-        '<>' => ['integer', 'id', 'string'],
-        'ne' => ['integer', 'id', 'string'],
-        '>=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        'gte' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '<=' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        'lte' => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '>'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        'gt'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '<'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        'lt'  => ['integer', 'date', 'datetime', 'id', 'relationship'],
-        '='  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
-        'eq'  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        '<>' => ['integer', 'id', 'float', 'string'],
+        'ne' => ['integer', 'id', 'float', 'string'],
+        '>=' => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        'gte' => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        '<=' => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        'lte' => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        '>'  => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        'gt'  => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        '<'  => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        'lt'  => ['integer', 'date', 'datetime', 'id', 'float', 'relationship'],
+        '='  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'eq'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
-        'in'   => ['integer', 'id', 'string', 'json'],
-        'is'   => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
-        'not'  => ['integer', 'date', 'datetime', 'id', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'in'   => ['integer', 'id', 'float', 'string', 'json'],
+        'is'   => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
+        'not'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
     ];
 
     /**
@@ -187,10 +187,11 @@ trait Filterable
             list($filterName, $jsonPath) = explode('->', $filterName, 2);
         }
 
-        // Decide which “where…” method to call based on filterType
+        // Decide which "where…" method to call based on filterType
         switch ($filterType) {
             case 'id':
             case 'integer':
+            case 'float':
             case 'string':
             case 'json':
                 $method = 'where';
