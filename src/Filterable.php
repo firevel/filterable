@@ -161,7 +161,10 @@ trait Filterable
         }
 
         // Handle “in” operator
-        if ($operator === 'in') {
+        if (
+            $operator === 'in' &&
+            empty($relationship)
+        ) {
             if (is_array($filterValue)) {
                 $array = $filterValue;
             } else {
@@ -237,7 +240,15 @@ trait Filterable
                         $query->where($filterRelationshipQuery);
                     }
 
-                    if ($filterType === 'array') {
+                    // Handle “in” operator
+                    if ($operator === 'in') {
+                        if (is_array($filterValue)) {
+                            $array = $filterValue;
+                        } else {
+                            $array = explode(',', $filterValue);
+                        }
+                        return $query->whereIn($filterName, $array);
+                    } elseif ($filterType === 'array') {
                         return $query->$method($filterName, $filterValue);
                     }
 
