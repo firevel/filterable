@@ -160,8 +160,8 @@ trait Filterable
             list($relationship, $filterName) = explode('.', $filterName);
         }
 
-        // Handle "in" operator
-        if ($operator === 'in') {
+        // Handle "in" operator (skip if relationship - handled in whereHas closure)
+        if ($operator === 'in' && empty($relationship)) {
             if (is_array($filterValue)) {
                 $values = $filterValue;
             } else {
@@ -247,9 +247,33 @@ trait Filterable
         if (! empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery) {
+                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);
+                    }
+
+                    // Handle "in" operator inside relationship
+                    if ($operator === 'in') {
+                        if (is_array($filterValue)) {
+                            $values = $filterValue;
+                        } else {
+                            $values = explode(',', $filterValue);
+                        }
+
+                        // For array type, use whereJsonContains
+                        if ($filterType === 'array') {
+                            if (count($values) === 1) {
+                                return $query->whereJsonContains($filterName, trim($values[0]));
+                            }
+
+                            return $query->where(function ($q) use ($filterName, $values) {
+                                foreach ($values as $value) {
+                                    $q->orWhereJsonContains($filterName, trim($value));
+                                }
+                            });
+                        }
+
+                        return $query->whereIn($filterName, $values);
                     }
 
                     return $query->$method($filterName, $operator, $filterValue);
