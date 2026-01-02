@@ -137,7 +137,7 @@ By default, the trait allows the following operators for each filter type. To ov
 | `<`      | `lt`  | Less than                                  | `integer`, `date`, `datetime`, `id`, `relationship`|
 | `<=`     | `lte` | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `relationship`|
 | `like`   | -     | SQL LIKE (for partial string matches)       | `string`                                          |
-| `in`     | -     | SQL IN (for lists or comma‐separated values)| `integer`, `id`, `string`, `json`                 |
+| `in`     | -     | SQL IN (for lists or comma‐separated values); for `array` type, checks if JSON array contains value(s) | `integer`, `id`, `string`, `json`, `array` |
 | `is`     | -     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
 | `not`    | -     | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
 
@@ -349,9 +349,17 @@ If you have a JSON column (e.g. `meta`), you can:
   ];
   ```
   ```php
-  // Get users whose “tags” array contains “premium”
+  // Check if JSON array contains a value using 'in' operator
   $users = User::filter([ 'tags' => ['in' => 'premium'] ])->get();
   // → SELECT * FROM users WHERE JSON_CONTAINS(tags, '"premium"');
+
+  // Check if JSON array contains ANY of multiple values
+  $users = User::filter([ 'tags' => ['in' => 'premium,vip'] ])->get();
+  // → SELECT * FROM users WHERE (JSON_CONTAINS(tags, '"premium"') OR JSON_CONTAINS(tags, '"vip"'));
+
+  // Exact match on the entire array using '=' operator
+  $users = User::filter([ 'tags' => ['=' => '["premium","vip"]'] ])->get();
+  // → SELECT * FROM users WHERE tags = '["premium","vip"]';
   ```
 
 ---
@@ -466,9 +474,9 @@ $filters = [
 $users = User::filter($filters)->get();
 
 
-// 3) Get all products whose “tags” JSON array includes either “sale” or “new”:
+// 3) Get all products whose "tags" JSON array includes "sale" or "new":
 $filters = [
-    'tags' => ['in' => 'sale,new'],  // comma‐separated or array
+    'tags' => ['in' => 'sale,new'],  // checks if array contains any of these values
 ];
 
 $productsOnSaleOrNew = Product::filter($filters)->get();

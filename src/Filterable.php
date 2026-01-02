@@ -39,7 +39,7 @@ trait Filterable
         '='  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'eq'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
-        'in'   => ['integer', 'id', 'float', 'string', 'json'],
+        'in'   => ['integer', 'id', 'float', 'string', 'json', 'array'],
         'is'   => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'not'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
     ];
@@ -160,14 +160,29 @@ trait Filterable
             list($relationship, $filterName) = explode('.', $filterName);
         }
 
-        // Handle “in” operator
+        // Handle "in" operator
         if ($operator === 'in') {
             if (is_array($filterValue)) {
-                $array = $filterValue;
+                $values = $filterValue;
             } else {
-                $array = explode(',', $filterValue);
+                $values = explode(',', $filterValue);
             }
-            return $query->whereIn($filterName, $array);
+
+            // For array type, use whereJsonContains (check if JSON array contains value)
+            if ($filterType === 'array') {
+                if (count($values) === 1) {
+                    return $query->whereJsonContains($filterName, trim($values[0]));
+                }
+
+                // Multiple values - check if JSON array contains ANY of them
+                return $query->where(function ($q) use ($filterName, $values) {
+                    foreach ($values as $value) {
+                        $q->orWhereJsonContains($filterName, trim($value));
+                    }
+                });
+            }
+
+            return $query->whereIn($filterName, $values);
         }
 
         // Handle NULL checks for “is null” / “is not null”
@@ -198,7 +213,7 @@ trait Filterable
                 break;
 
             case 'array':
-                $method = 'whereJsonContains';
+                $method = 'where';
                 break;
 
             case 'relationship':
@@ -228,17 +243,13 @@ trait Filterable
                 throw new \Exception('Unsupported filter type ' . $filterType);
         }
 
-        // If this was a “relationship.column” filter
+        // If this was a "relationship.column" filter
         if (! empty($relationship)) {
             return $query->whereHas(
                 Str::camel($relationship),
-                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery, $filterType) {
+                function ($query) use ($method, $filterName, $operator, $filterValue, $filterRelationshipQuery) {
                     if (! empty($filterRelationshipQuery)) {
                         $query->where($filterRelationshipQuery);
-                    }
-
-                    if ($filterType === 'array') {
-                        return $query->$method($filterName, $filterValue);
                     }
 
                     return $query->$method($filterName, $operator, $filterValue);
@@ -255,11 +266,6 @@ trait Filterable
                 'AND',
                 $this->filterRelationshipQuery
             );
-        }
-
-        // If type is “array” → use whereJsonContains
-        if ($filterType === 'array') {
-            return $query->$method($filterName, $filterValue);
         }
 
         // If we had a JSON path (meta->key), tack it on now
