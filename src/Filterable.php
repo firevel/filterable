@@ -99,8 +99,19 @@ trait Filterable
 
             // If the filterType is "scope", call the local scope method
             if ($filterType === 'scope') {
-                // Str::camel('name') => 'name', so it will call $query->name($value, $filters)
-                $query->{Str::camel($filterName)}($filters[$filterName], $filters);
+                $studlyName = Str::studly($filterName);
+                $prefixedScopeMethod = 'scopeFilter' . $studlyName;
+                $simpleScopeMethod = 'scope' . $studlyName;
+
+                // Prefer scopeFilter{Name} to avoid conflicts with reserved method names
+                // Fall back to scope{Name} for backward compatibility
+                if (method_exists($this, $prefixedScopeMethod)) {
+                    $query->{'filter' . $studlyName}($filters[$filterName], $filters);
+                } elseif (method_exists($this, $simpleScopeMethod)) {
+                    $query->{Str::camel($filterName)}($filters[$filterName], $filters);
+                } else {
+                    throw new \Exception("Scope method '$prefixedScopeMethod' or '$simpleScopeMethod' not found on model.");
+                }
                 continue;
             }
 

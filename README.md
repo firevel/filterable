@@ -292,6 +292,45 @@ Sometimes you want a single filter key (e.g. `name`) that actually applies to mu
 - **Keeps your trait logic simple**: you don't have to override the trait's internal validation or operator parsing—your `scopeName()` takes full responsibility for how the filter behaves.
 - **Reusable & readable**: everyone knows that "scopeX" is a local query modifier, and the trait simply defers to it.
 
+#### Scope Method Naming Convention
+
+The trait supports two naming conventions for scope methods and uses Laravel's `Str::studly()` for conversion:
+
+1. **Prefixed (recommended)**: `scopeFilter{Name}` — e.g., `scopeFilterSearch` for filter key `search`
+2. **Simple**: `scope{Name}` — e.g., `scopeSearch` for filter key `search`
+
+The prefixed convention is checked first and is recommended to avoid conflicts with reserved Laravel method names like `query`, `where`, `get`, etc.
+
+```php
+// Recommended: use scopeFilter prefix to avoid conflicts
+protected $filterable = [
+    'query' => 'scope',  // Safe! Won't conflict with $query->query()
+];
+
+public function scopeFilterQuery($query, $value, $allFilters = [])
+{
+    // Your custom filter logic
+}
+
+// Also supported for backward compatibility
+protected $filterable = [
+    'name' => 'scope',
+];
+
+public function scopeName($query, $value, $allFilters = [])
+{
+    // Your custom filter logic
+}
+```
+
+Filter names with underscores or dots are converted using StudlyCase:
+
+| Filter Key | Prefixed Method | Simple Method |
+|------------|-----------------|---------------|
+| `search` | `scopeFilterSearch` | `scopeSearch` |
+| `user_status` | `scopeFilterUserStatus` | `scopeUserStatus` |
+| `user.role` | `scopeFilterUserRole` | `scopeUserRole` |
+
 #### Accessing Other Filters in Scope Methods
 
 Scope filter methods receive two parameters:
