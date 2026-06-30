@@ -263,6 +263,13 @@ trait Filterable
                         $query->where($filterRelationshipQuery);
                     }
 
+                    // Qualify the column with the related model's table to avoid
+                    // ambiguous column errors when the relation joins a pivot or
+                    // table sharing the column name (e.g. an "id" column).
+                    // qualifyColumn() is a no-op when the column is already
+                    // qualified or is a JSON "->" path.
+                    $column = $query->qualifyColumn($filterName);
+
                     // Handle "in" operator inside relationship
                     if ($operator === 'in') {
                         if (is_array($filterValue)) {
@@ -274,20 +281,20 @@ trait Filterable
                         // For array type, use whereJsonContains
                         if ($filterType === 'array') {
                             if (count($values) === 1) {
-                                return $query->whereJsonContains($filterName, trim($values[0]));
+                                return $query->whereJsonContains($column, trim($values[0]));
                             }
 
-                            return $query->where(function ($q) use ($filterName, $values) {
+                            return $query->where(function ($q) use ($column, $values) {
                                 foreach ($values as $value) {
-                                    $q->orWhereJsonContains($filterName, trim($value));
+                                    $q->orWhereJsonContains($column, trim($value));
                                 }
                             });
                         }
 
-                        return $query->whereIn($filterName, $values);
+                        return $query->whereIn($column, $values);
                     }
 
-                    return $query->$method($filterName, $operator, $filterValue);
+                    return $query->$method($column, $operator, $filterValue);
                 }
             );
         }
