@@ -453,6 +453,7 @@ $users = User::filter($filters)->get();
 >     ->filter([ 'orders' => ['in' => [1,2,3]] ])
 >     ->get();
 > ```
+> For a `relationship`-type filter, `in` matches against the related model's **primary key** (so `[1,2,3]` above means "has an order whose id is 1, 2, or 3"), combined with the `useRelationshipQuery()` closure when one is set.
 
 ---
 

@@ -13,12 +13,11 @@ trait Filterable
      */
     protected $defaultFilterOperator = '=';
 
-    /**
-     * Check if columns are supported and throw exception if not.
-     *
-     * @var boolean
-     */
-    protected $validateColumns = false;
+    // `$validateColumns` is intentionally not declared here. A model overrides
+    // it with `protected $validateColumns = true;`, and PHP treats a trait
+    // property redeclared with a different default value as a fatal
+    // "incompatible" conflict. Leaving it undeclared lets `$this->validateColumns`
+    // fall through to the model's own declaration (or null/falsy if unset).
 
     /**
      * Supported operators.
@@ -39,7 +38,7 @@ trait Filterable
         '='  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'eq'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'like' => ['string'],
-        'in'   => ['integer', 'id', 'float', 'string', 'json', 'array'],
+        'in'   => ['integer', 'id', 'float', 'string', 'json', 'array', 'relationship'],
         'is'   => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
         'not'  => ['integer', 'date', 'datetime', 'id', 'float', 'string', 'relationship', 'boolean', 'json', 'array'],
     ];
@@ -103,12 +102,17 @@ trait Filterable
                 $prefixedScopeMethod = 'scopeFilter' . $studlyName;
                 $simpleScopeMethod = 'scope' . $studlyName;
 
+                // Scopes don't have operators of their own, so an
+                // ['operator' => value] array (e.g. ['like' => 'Smith'])
+                // is unwrapped to just its value before being handed off.
+                $scopeValue = is_array($filterValue) ? reset($filterValue) : $filterValue;
+
                 // Prefer scopeFilter{Name} to avoid conflicts with reserved method names
                 // Fall back to scope{Name} for backward compatibility
                 if (method_exists($this, $prefixedScopeMethod)) {
-                    $query->{'filter' . $studlyName}($filters[$filterName], $filters);
+                    $query->{'filter' . $studlyName}($scopeValue, $filters);
                 } elseif (method_exists($this, $simpleScopeMethod)) {
-                    $query->{Str::camel($filterName)}($filters[$filterName], $filters);
+                    $query->{Str::camel($filterName)}($scopeValue, $filters);
                 } else {
                     throw new \Exception("Scope method '$prefixedScopeMethod' or '$simpleScopeMethod' not found on model.");
                 }
@@ -190,6 +194,20 @@ trait Filterable
                     foreach ($values as $value) {
                         $q->orWhereJsonContains($filterName, trim($value));
                     }
+                });
+            }
+
+            // For relationship type, match against the related model's primary key
+            if ($filterType === 'relationship') {
+                $relationName = Str::camel($filterName);
+                $values = array_map('trim', $values);
+
+                return $query->whereHas($relationName, function ($query) use ($values, $filterRelationshipQuery) {
+                    if (! empty($filterRelationshipQuery)) {
+                        $query->where($filterRelationshipQuery);
+                    }
+
+                    $query->whereIn($query->getModel()->getKeyName(), $values);
                 });
             }
 
@@ -322,13 +340,27 @@ trait Filterable
     /**
      * Allow chaining an extra query on relationships.
      *
-     * @param  Builder  $query
-     * @return $this
+     * Implemented as a local scope (`scopeUseRelationshipQuery`) rather than
+     * a plain method so Eloquent's own scope dispatch handles both call
+     * styles correctly: `User::useRelationshipQuery($query)` (static, builds
+     * a fresh instance) and `$model->useRelationshipQuery($query)` (mutates
+     * $model in place, same as before). A hand-written method can only ever
+     * be static OR instance-bound, not both - PHP errors if a non-static
+     * method already exists when called in static context, and a static
+     * method called via `$model->` ignores $model entirely. Eloquent's named
+     * scope resolution (Model::__call / __callStatic -> newQuery() ->
+     * callNamedScope()) always re-binds the scope to the correct underlying
+     * model instance, so this gets both for free.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  \Closure  $relationshipQuery
+     * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function useRelationshipQuery($query)
+    public function scopeUseRelationshipQuery($query, $relationshipQuery)
     {
-        $this->filterRelationshipQuery = $query;
-        return $this;
+        $this->filterRelationshipQuery = $relationshipQuery;
+
+        return $query;
     }
 
     /**
