@@ -137,7 +137,7 @@ By default, the trait allows the following operators for each filter type. To ov
 | `<`      | `lt`  | Less than                                  | `integer`, `date`, `datetime`, `id`, `relationship`|
 | `<=`     | `lte` | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `relationship`|
 | `like`   | -     | SQL LIKE (for partial string matches)       | `string`                                          |
-| `in`     | -     | SQL IN (for lists or comma‐separated values); for `array` type, checks if JSON array contains value(s) | `integer`, `id`, `string`, `json`, `array` |
+| `in`     | -     | SQL IN (for lists or comma‐separated values); for `array` type, checks if JSON array contains value(s); for `relationship` type, matches against the related model's primary key | `integer`, `id`, `string`, `json`, `array`, `relationship` |
 | `is`     | -     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
 | `not`    | -     | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
 
@@ -323,13 +323,14 @@ public function scopeName($query, $value, $allFilters = [])
 }
 ```
 
-Filter names with underscores or dots are converted using StudlyCase:
+Filter names with underscores are converted using StudlyCase:
 
 | Filter Key | Prefixed Method | Simple Method |
 |------------|-----------------|---------------|
 | `search` | `scopeFilterSearch` | `scopeSearch` |
 | `user_status` | `scopeFilterUserStatus` | `scopeUserStatus` |
-| `user.role` | `scopeFilterUserRole` | `scopeUserRole` |
+
+> **Note:** dots are *not* converted the same way—`Str::studly()` only treats `-` and `_` as word separators, so a key like `user.role` would studly-case to `User.role` (literal dot kept), which can never match a real PHP method name. Don't use dots in `'scope'`-type filter keys; use underscores instead (e.g. `user_role`).
 
 #### Accessing Other Filters in Scope Methods
 
@@ -545,11 +546,11 @@ $productsOnSaleOrNew = Product::filter($filters)->get();
 - **“Filter column ‘xyz’ is not allowed.”**  
   You enabled `protected $validateColumns = true` and passed a key not in `$filterable`. Either add it to the array or disable validation.
 
-- **`Operator ‘in’ is not allowed for type ‘integer’`**  
-  Check your `$filterable` type for that key. The `in` operator only works on `integer`, `id`, `string`, or `json`—not on `date/datetime` out of the box.
+- **`Operator ‘in’ is not allowed for type ‘date’`** (or `boolean`)  
+  Check your `$filterable` type for that key. The `in` operator only works on `integer`, `id`, `string`, `json`, `array`, and `relationship`—not on `date`/`datetime`/`boolean` out of the box.
 
 - **Composite filter not working**  
-  If you declared a key as `'scope'` in `$filterable` (for example, `'name' => 'scope'`), make sure you have a corresponding `scopeName()` method on the model. If the trait can’t find `scopeName`, it will skip your filter.
+  If you declared a key as `'scope'` in `$filterable` (for example, `'name' => 'scope'`), make sure you have a corresponding `scopeFilterName()` (recommended) or `scopeName()` method on the model. If neither method exists, the trait throws `Scope method 'scopeFilterName' or 'scopeName' not found on model.` rather than silently skipping the filter.
 
 - **Slow queries on large tables**  
   - Check if you’re using `%…%` wildcards (leading `%`) on very large text columns—those can’t use indexes.  
