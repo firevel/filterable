@@ -10,6 +10,13 @@
             "email": "michael.slowik@firevel.com"
         }
     ],
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0",
+        "phpunit/phpunit": "^10.5"
+    },
     "autoload": {
         "psr-4": {
             "Firevel\\Filterable\\": "src/"
