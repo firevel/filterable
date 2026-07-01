@@ -10,3 +10,4 @@ psalm.xml
 testbench.yaml
 vendor
 .php-cs-fixer.cache
+*.log
