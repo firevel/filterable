@@ -75,7 +75,7 @@ Now you can do:
 
 ```php
 $users = User::filter([
-    'first_name' => ['like' => 'Smith'],
+    'first_name' => ['like' => '%Smith%'],
     'created_at' => ['>'    => '2023-01-01'],
 ])->get();
 ```
@@ -114,6 +114,7 @@ The trait will only apply filters for keys explicitly declared in `$filterable`;
 | ------------- | ------------------------------------------------------------------------------------- |
 | `integer`     | Integer columns or numeric IDs                                                         |
 | `id`          | Shorthand for integer when representing a primary/foreign key                           |
+| `float`       | Floating‐point / decimal columns; same operators as `integer`                           |
 | `string`      | Text columns; used with operators like `like`, `=`, `<>`                                |
 | `date`        | Date‐only filters (YYYY‐MM‐DD). Under the hood, uses `whereDate()`                      |
 | `datetime`    | Date & time filters (YYYY‐MM‐DD HH:MM:SS). Uses `whereDate()` if value is 10 chars long |
@@ -121,6 +122,7 @@ The trait will only apply filters for keys explicitly declared in `$filterable`;
 | `json`        | JSON columns; used with `where()` or JSON operators                                      |
 | `array`       | JSON columns containing arrays; uses `whereJsonContains()`                               |
 | `relationship`| Expect a related model or “has” filter on a `belongsTo` / `hasMany` style relationship    |
+| `scope`       | Custom composite filter handled by a local scope method — see [Composite (“Virtual”) Filters](#composite-virtual-filters) |
 
 ---
 
@@ -130,16 +132,16 @@ By default, the trait allows the following operators for each filter type. To ov
 
 | Operator | Alias | Meaning                                    | Allowed Types                                     |
 | -------- | ----- | ------------------------------------------ | ------------------------------------------------- |
-| `=`      | `eq`  | Equal to (default if no operator provided) | `integer`, `id`, `string`, `date`, `datetime`, `relationship`, `boolean`, `json`, `array` |
-| `<>`     | `ne`  | Not equal to                               | `integer`, `id`, `string`                         |
-| `>`      | `gt`  | Greater than                               | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `>=`     | `gte` | Greater than or equal                      | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `<`      | `lt`  | Less than                                  | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `<=`     | `lte` | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `relationship`|
-| `like`   | -     | SQL LIKE (for partial string matches)       | `string`                                          |
-| `in`     | -     | SQL IN (for lists or comma‐separated values); for `array` type, checks if JSON array contains value(s); for `relationship` type, matches against the related model's primary key | `integer`, `id`, `string`, `json`, `array`, `relationship` |
-| `is`     | -     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
-| `not`    | -     | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `string`, `boolean`, `json`, `array` |
+| `=`      | `eq`  | Equal to (default if no operator provided) | `integer`, `id`, `float`, `string`, `date`, `datetime`, `relationship`, `boolean`, `json`, `array` |
+| `<>`     | `ne`  | Not equal to                               | `integer`, `id`, `float`, `string`                |
+| `>`      | `gt`  | Greater than                               | `integer`, `date`, `datetime`, `id`, `float`, `relationship`|
+| `>=`     | `gte` | Greater than or equal                      | `integer`, `date`, `datetime`, `id`, `float`, `relationship`|
+| `<`      | `lt`  | Less than                                  | `integer`, `date`, `datetime`, `id`, `float`, `relationship`|
+| `<=`     | `lte` | Less than or equal                         | `integer`, `date`, `datetime`, `id`, `float`, `relationship`|
+| `like`   | -     | SQL LIKE. The value is passed verbatim — include `%` wildcards yourself (e.g. `'%foo%'`) | `string`                                          |
+| `in`     | -     | SQL IN (for lists or comma‐separated values); for `array` type, checks if JSON array contains value(s); for `relationship` type, matches against the related model's primary key | `integer`, `id`, `float`, `string`, `json`, `array`, `relationship` |
+| `is`     | -     | IS NULL check (pass `'null'` as value)      | `integer`, `date`, `datetime`, `id`, `float`, `string`, `boolean`, `json`, `array` |
+| `not`    | -     | IS NOT NULL (pass `'null'` as value)        | `integer`, `date`, `datetime`, `id`, `float`, `string`, `boolean`, `json`, `array` |
 
 > **Note**: If you supply a plain scalar (e.g. `'foo'`) instead of `['=' => 'foo']`, the trait assumes the `=` operator by default.
 
@@ -220,7 +222,7 @@ Combine as many filters as you need; they are joined with `AND` logic:
 
 ```php
 $filters = [
-    'first_name' => ['like' => 'John'],
+    'first_name' => ['like' => '%John%'],
     'created_at' => ['>='   => '2025-01-01'],
     'status'     => ['='    => 'active'],
 ];
@@ -547,7 +549,7 @@ $productsOnSaleOrNew = Product::filter($filters)->get();
   You enabled `protected $validateColumns = true` and passed a key not in `$filterable`. Either add it to the array or disable validation.
 
 - **`Operator ‘in’ is not allowed for type ‘date’`** (or `boolean`)  
-  Check your `$filterable` type for that key. The `in` operator only works on `integer`, `id`, `string`, `json`, `array`, and `relationship`—not on `date`/`datetime`/`boolean` out of the box.
+  Check your `$filterable` type for that key. The `in` operator only works on `integer`, `id`, `float`, `string`, `json`, `array`, and `relationship`—not on `date`/`datetime`/`boolean` out of the box.
 
 - **Composite filter not working**  
   If you declared a key as `'scope'` in `$filterable` (for example, `'name' => 'scope'`), make sure you have a corresponding `scopeFilterName()` (recommended) or `scopeName()` method on the model. If neither method exists, the trait throws `Scope method 'scopeFilterName' or 'scopeName' not found on model.` rather than silently skipping the filter.
